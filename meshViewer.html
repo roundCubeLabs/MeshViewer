@@ -1,0 +1,349 @@
+<html>
+	<head onload="init()">
+		<title>MeshViewer</title>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+	    <canvas id="myCanvas" ondrag="dragging(event)"></canvas>
+		
+		<input type="file" name="file" id="file" style="position:fixed;top:0px;left:0px;color:white">
+		<div style="position:fixed;bottom:0px;left:0px;padding-bottom:10px;">
+			<button onclick="zoomin()">Zoom In</button>
+			<button onclick="zoomout()">Zoom Out</button>		
+		</div>
+		<div style="position:fixed;top:0px;right:0px;padding-top:10px;color:white;padding-right:10px">
+			<p>Open .obj file</p>
+			<p>Press Directional Keys to move</p>
+			<p>Press +/- to Zoom In/Zoom Out</p>
+			<p>Press x/y/z to Rotate across X/Y/Z axis</p>
+		
+		</div>
+		<div  style="position:fixed;bottom:0px;right:0px;padding-bottom:10px;color:white;padding-right:10px">
+			Currently Displaying in <span id="modeTypeText">Mesh</span> Mode<br>
+			<button onclick="enableMeshMode()" id="meshButt" disabled>Mesh Mode</button>
+			<button onclick="enableTextureMode()" id="textureButt">Texture Mode</button>
+
+		</div>
+		
+
+
+		<script src="three.js"></script>
+		<script>
+		    var myCanvas = document.getElementById('myCanvas');
+
+			var scene = new THREE.Scene();
+			var camera = new THREE.PerspectiveCamera( 75, (window.innerWidth/window.innerHeight), 0.15, 3000 );
+			camera.position.set( 0, 0, 0 );
+			camera.lookAt( 0, 0, 0 );
+			var renderer = new THREE.WebGLRenderer({canvas: myCanvas, antialias: true});
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			//document.body.appendChild( renderer.domElement );
+			
+			//scene.normalize();
+			
+			
+			
+			
+			
+			
+			
+			
+				var materialLine1 = new THREE.LineBasicMaterial( { color: 0xffffff } );
+				
+				var lineGeometry1 = new THREE.Geometry();
+				lineGeometry1.vertices.push(new THREE.Vector3(0,0,0));
+			
+				var line1 = new THREE.Line( lineGeometry1, materialLine1 );
+				scene.add( line1 );
+				
+				
+			
+	
+
+			
+
+
+			/*
+			var geometry = new THREE.BoxGeometry( 7, 7, 7 );
+			var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+			var cube = new THREE.Mesh( geometry, material );
+			scene.add( cube );*/
+			    var light = new THREE.AmbientLight(0xffffff, 0.5);
+				scene.add(light);
+			
+			
+			var focusPoint;
+			var createTriangle = function(index1,index2,index3){
+				
+				//console.log(count);
+				//count++;
+				
+				var vector1=new THREE.Vector3( modelVertices[index1][0], modelVertices[index1][1], modelVertices[index1][2]);
+				var vector2=new THREE.Vector3( modelVertices[index2][0], modelVertices[index2][1], modelVertices[index2][2]);
+				var vector3=new THREE.Vector3( modelVertices[index3][0], modelVertices[index3][1], modelVertices[index3][2]);
+				
+				
+				var materialLine = new THREE.LineBasicMaterial( { color: 0xffffff } );
+				
+				var lineGeometry = new THREE.Geometry();
+				lineGeometry.vertices.push(vector1);
+				lineGeometry.vertices.push(vector2);
+				lineGeometry.vertices.push(vector3);
+				lineGeometry.vertices.push(vector1);
+
+				var line = new THREE.Line( lineGeometry, materialLine );
+				line.position.z = -70;
+				scene.add( line );
+					focusPoint=line;
+				//render();
+
+			}
+						
+			var createTriangleWithTexture = function(index1,index2,index3){
+
+				var vector1=new THREE.Vector3( modelVertices[index1][0], modelVertices[index1][1], modelVertices[index1][2]);
+				var vector2=new THREE.Vector3( modelVertices[index2][0], modelVertices[index2][1], modelVertices[index2][2]);
+				var vector3=new THREE.Vector3( modelVertices[index3][0], modelVertices[index3][1], modelVertices[index3][2]);
+			
+				//CREATING GEOMETRY 
+				var geometry = new THREE.Geometry();
+				geometry.vertices.push(vector1,vector2,vector3);
+				
+				geometry.faces.push( new THREE.Face3( 0, 1, 2 ) );
+	
+				
+				
+				var material = new THREE.MeshLambertMaterial({color: Math.random() *0xFFFFFF});
+				var mesh = new THREE.Mesh(geometry, material);
+				mesh.position.z = -70;
+				
+				scene.add(mesh);
+				
+			
+			
+			}
+
+
+			function render() {
+				renderer.render(scene, camera);
+
+				requestAnimationFrame(render);
+			}
+			
+					
+			
+
+	
+	
+			var canvasCenter={
+				x:0,
+				y:0
+			}
+			
+			function init(){
+				canvasCenter.x=myCanvas.width/2;
+				canvasCenter.y=myCanvas.height/2;
+			}
+			
+			var triangleCords=[]
+			
+			function createCircle(x,y,z){
+				var geometry = new THREE.CircleGeometry( 1, 32 );
+				var material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+				var circle = new THREE.Mesh( geometry, material );
+				scene.add( circle );
+				circle.position.x=x;
+				circle.position.y=y;
+				//circle.position.z=z;
+			}
+			
+			var modelVertices=[];
+			var modelFaces=[];
+			
+			function addVertice(vert){
+				modelVertices.push(vert);
+				//console.log(vert);
+			
+			}
+			
+			document.getElementById('file').onchange = function(){
+
+			  var file = this.files[0];
+
+			  var reader = new FileReader();
+			  reader.onload = function(progressEvent){
+				// Entire file
+				//console.log(this.result);
+				var reg = /[+-]?\d+(\.\d+)?/g;
+				// By lines
+				var lines = this.result.split('\n');
+				for(var line = 0; line < lines.length; line++){
+					if (lines[line].beginsWith('v')) {
+						//console.log(lines[line]);
+						var vertex=lines[line].match(reg);
+						//createCircle(parseFloat(vertex[0]),parseFloat(vertex[1]),parseFloat(vertex[2]));
+						
+						addVertice(vertex);
+					
+					}
+					else if(lines[line].beginsWith('f')){
+					
+						var vertex=lines[line].match(reg);
+						modelFaces.push(vertex);
+						//console.log(parseInt(vertex[0]));
+						//if(count<1000){
+							if(isTexture==false){
+								createTriangle(parseInt(vertex[0])-1,parseInt(vertex[1])-1,parseInt(vertex[2])-1);
+							}
+							else{
+								createTriangleWithTexture(parseInt(vertex[0])-1,parseInt(vertex[1])-1,parseInt(vertex[2])-1);
+							}
+							
+							
+						//}
+					}
+				  
+				}
+								render();
+
+			  };
+			  reader.readAsText(file);
+			};
+			
+			
+			String.prototype.beginsWith = function (string) {
+				return(this.indexOf(string) === 0);
+			};
+
+			
+			async function zoomin(){
+				camera.position.z -= 2;
+			
+			}
+			
+			
+			async function zoomout(){
+				camera.position.z += 2;
+			
+			}
+			
+			async function cameraMoveLeft(){
+				camera.position.x += 0.5;
+			}
+			
+			async function cameraMoveRight(){
+				camera.position.x -= 0.5;
+			}
+			
+			async function cameraMoveUp(){
+				camera.position.y -= 0.5;
+			}
+			
+			async function cameraMoveDown(){
+				camera.position.y += 0.5;
+			}
+			
+			
+			document.onkeydown = checkKey;
+
+			function checkKey(e) {
+			
+			console.log(e.keyCode)
+			    var event = window.event ? window.event : e;
+				if (e.keyCode == '107') {
+					zoomin();
+				}
+				else if (e.keyCode == '109') {
+					zoomout();
+				}
+				else if (e.keyCode == '38') {
+					// up arrow
+					cameraMoveDown();
+				}
+				else if (e.keyCode == '40') {
+					cameraMoveUp();
+
+
+				}
+				else if (e.keyCode == '37') {
+				    cameraMoveRight();
+				}
+				else if (e.keyCode == '39') {
+					cameraMoveLeft();
+				}
+				else if (e.keyCode == '88') {
+					camera.rotation.x+=0.01; 
+				}
+				
+				else if (e.keyCode == '89') {
+					camera.rotation.y+=0.01; 
+				}
+
+				else if (e.keyCode == '90') {
+					camera.rotation.z+=0.01; 
+				}
+				else if (e.keyCode == '16') {
+					camera.rotation.x+=1.57; 
+				}
+
+			}
+			
+			var isTexture=false;
+		
+			function enableTextureMode(){
+				isTexture=true;
+				document.getElementById("meshButt").disabled=false;
+				document.getElementById("textureButt").disabled=true;
+				console.log(scene.children)
+				var ambChild;
+			while(scene.children.length > 0){ 
+				if(scene.children[0].type=="AmbientLight"){
+					ambChild=scene.children[0];
+				}
+				scene.remove(scene.children[0]); 
+			}
+			scene.add(ambChild);
+		
+
+				for(var i=0;i<modelFaces.length;i++){
+					createTriangleWithTexture(modelFaces[i][0]-1,modelFaces[i][1]-1,modelFaces[i][2]-1);
+
+				}
+				document.getElementById("modeTypeText").innerHTML="Texture";
+				
+				
+			}
+			
+			function enableMeshMode(){
+				isTexture=false;
+				document.getElementById("meshButt").disabled=true;
+				document.getElementById("textureButt").disabled=false;
+				
+				var ambChild;
+			while(scene.children.length > 0){ 
+				if(scene.children[0].type=="AmbientLight"){
+					ambChild=scene.children[0];
+				}
+				scene.remove(scene.children[0]); 
+			}
+			scene.add(ambChild);
+		
+
+		
+
+
+				
+				for(var i=0;i<modelFaces.length;i++){
+					createTriangle(modelFaces[i][0],modelFaces[i][1],modelFaces[i][2]);
+
+				}
+				document.getElementById("modeTypeText").innerHTML="Mesh";
+
+			}
+			
+		</script>
+	</body>
+</html>
